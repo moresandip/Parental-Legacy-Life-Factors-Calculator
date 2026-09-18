@@ -121,13 +121,32 @@ export function calculateFactors(dob) {
   const motherTotal = parseFloat(factors.reduce((sum, f) => sum + f.mother, 0).toFixed(3));
   const fatherTotal = parseFloat(factors.reduce((sum, f) => sum + f.father, 0).toFixed(3));
   
-  // Distribute any tiny floating point rounding error (e.g. 0.001) to the highest value to force exact 100.000
+  // Distribute any tiny floating point rounding error (e.g. 0.001) to force exact 100.000
   let grandTotal = parseFloat((motherTotal + fatherTotal).toFixed(3));
   if (grandTotal !== 100.000) {
-    const diff = parseFloat((100.000 - grandTotal).toFixed(3));
-    // Apply correction to the largest father value just to balance the books perfectly
-    factors[0].father = parseFloat((factors[0].father + diff).toFixed(3));
-    factors[0].total = parseFloat((factors[0].mother + factors[0].father).toFixed(3));
+    let diff = parseFloat((100.000 - grandTotal).toFixed(3));
+    
+    // Find a factor's father value that can absorb the diff without violating min/max limits
+    for (let i = 0; i < factors.length && diff !== 0; i++) {
+      let newFather = parseFloat((factors[i].father + diff).toFixed(3));
+      if (newFather >= factors[i].min && newFather <= factors[i].max) {
+        factors[i].father = newFather;
+        factors[i].total = parseFloat((factors[i].mother + factors[i].father).toFixed(3));
+        diff = 0;
+        break;
+      }
+    }
+    
+    // Fallback to mother if needed (very unlikely)
+    for (let i = 0; i < factors.length && diff !== 0; i++) {
+      let newMother = parseFloat((factors[i].mother + diff).toFixed(3));
+      if (newMother >= factors[i].min && newMother <= factors[i].max) {
+        factors[i].mother = newMother;
+        factors[i].total = parseFloat((factors[i].mother + factors[i].father).toFixed(3));
+        diff = 0;
+        break;
+      }
+    }
   }
 
   // Recalculate after correction
