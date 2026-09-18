@@ -39,43 +39,47 @@ function buildSeed(date) {
 }
 
 /**
- * Generate raw factor totals in their [min, max] range using the seed.
- * Then scale all totals so they sum to exactly 100.
+ * Generate an array of values that sum exactly to `targetSum`,
+ * where each value is bounded by [min, max] of its corresponding factor.
  */
-function generateScaledTotals(rng) {
-  const rawTotals = FACTORS.map(({ min, max }) => {
-    const t = min + rng() * (max - min);
-    return t;
-  });
-
-  const rawSum = rawTotals.reduce((a, b) => a + b, 0);
-  const scale = 100 / rawSum;
-
-  return rawTotals.map((t) => parseFloat((t * scale).toFixed(3)));
-}
-
-/**
- * Split a total into mother/father values.
- * Mother-dominant (odd day): mother gets 55–70% of total
- * Father-dominant (even day): father gets 55–70% of total
- */
-function splitValue(total, motherDominant, rng) {
-  // Dominant parent gets between 53% and 68% of the total
-  const dominantFraction = 0.53 + rng() * 0.15;
-  const dominantValue = parseFloat((total * dominantFraction).toFixed(3));
-  const recessiveValue = parseFloat((total - dominantValue).toFixed(3));
-
-  if (motherDominant) {
-    return { mother: dominantValue, father: recessiveValue };
-  } else {
-    return { mother: recessiveValue, father: dominantValue };
+function distributeSum(targetSum, rng) {
+  const values = FACTORS.map(f => f.min);
+  let currentSum = values.reduce((a, b) => a + b, 0);
+  let remaining = targetSum - currentSum;
+  
+  const capacities = FACTORS.map(f => f.max - f.min);
+  
+  let iterations = 0;
+  while (remaining > 0.0005 && iterations < 100) {
+    iterations++;
+    // Generate random weights for factors that still have capacity
+    const weights = capacities.map(c => (c > 0.001 ? rng() : 0));
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    
+    if (totalWeight === 0) break; // Should not happen if targetSum <= max possible sum
+    
+    for (let i = 0; i < FACTORS.length; i++) {
+      if (weights[i] > 0 && remaining > 0) {
+        let toAdd = (weights[i] / totalWeight) * remaining;
+        // Cap the addition to the remaining capacity of this factor
+        if (toAdd > capacities[i]) {
+          toAdd = capacities[i];
+        }
+        
+        values[i] += toAdd;
+        capacities[i] -= toAdd;
+        remaining -= toAdd;
+      }
+    }
   }
+  
+  return values;
 }
 
 /**
  * Main calculation function.
  * @param {Date} dob
- * @returns {{ factors: Array, motherTotal: number, fatherTotal: number, grandTotal: number, motherDominant: boolean }}
+ * @returns {Object}
  */
 export function calculateFactors(dob) {
   const day = dob.getDate();
@@ -84,14 +88,23 @@ export function calculateFactors(dob) {
   const seed = buildSeed(dob);
   const rng = seededRandom(seed);
 
-  const scaledTotals = generateScaledTotals(rng);
+  // The sum of minimums is 47.121
+  // The sum of maximums is 54.230
+  // To reach a grand total of 100, the dominant parent gets a target between 51.0 and 52.8
+  // The recessive parent gets the remainder (100 - dominant target), which will be 47.2 to 49.0
+  const dominantTarget = 51.0 + rng() * 1.8;
+  const recessiveTarget = 100.0 - dominantTarget;
+  
+  const motherTarget = motherDominant ? dominantTarget : recessiveTarget;
+  const fatherTarget = motherDominant ? recessiveTarget : dominantTarget;
+  
+  const motherValues = distributeSum(motherTarget, rng);
+  const fatherValues = distributeSum(fatherTarget, rng);
 
   const factors = FACTORS.map((factor, i) => {
-    const total = scaledTotals[i];
-    const { mother, father } = splitValue(total, motherDominant, rng);
-
-    // Recalculate total from rounded values to keep accuracy
-    const recalcTotal = parseFloat((mother + father).toFixed(3));
+    const mother = parseFloat(motherValues[i].toFixed(3));
+    const father = parseFloat(fatherValues[i].toFixed(3));
+    const total = parseFloat((mother + father).toFixed(3));
 
     return {
       key: factor.key,
@@ -100,26 +113,35 @@ export function calculateFactors(dob) {
       max: factor.max,
       mother,
       father,
-      total: recalcTotal,
+      total,
     };
   });
 
-  // Recalculate grand totals
-  const motherTotal = parseFloat(
-    factors.reduce((sum, f) => sum + f.mother, 0).toFixed(3)
-  );
-  const fatherTotal = parseFloat(
-    factors.reduce((sum, f) => sum + f.father, 0).toFixed(3)
-  );
-  const grandTotal = parseFloat((motherTotal + fatherTotal).toFixed(3));
+  // Calculate strict totals from the rounded values
+  const motherTotal = parseFloat(factors.reduce((sum, f) => sum + f.mother, 0).toFixed(3));
+  const fatherTotal = parseFloat(factors.reduce((sum, f) => sum + f.father, 0).toFixed(3));
+  
+  // Distribute any tiny floating point rounding error (e.g. 0.001) to the highest value to force exact 100.000
+  let grandTotal = parseFloat((motherTotal + fatherTotal).toFixed(3));
+  if (grandTotal !== 100.000) {
+    const diff = parseFloat((100.000 - grandTotal).toFixed(3));
+    // Apply correction to the largest father value just to balance the books perfectly
+    factors[0].father = parseFloat((factors[0].father + diff).toFixed(3));
+    factors[0].total = parseFloat((factors[0].mother + factors[0].father).toFixed(3));
+  }
+
+  // Recalculate after correction
+  const finalMotherTotal = parseFloat(factors.reduce((sum, f) => sum + f.mother, 0).toFixed(3));
+  const finalFatherTotal = parseFloat(factors.reduce((sum, f) => sum + f.father, 0).toFixed(3));
+  const finalGrandTotal = parseFloat((finalMotherTotal + finalFatherTotal).toFixed(3));
 
   return {
     factors,
-    motherTotal,
-    fatherTotal,
-    grandTotal,
+    motherTotal: finalMotherTotal,
+    fatherTotal: finalFatherTotal,
+    grandTotal: finalGrandTotal,
     motherDominant,
     day,
-    dob: dob.toLocaleDateString("en-GB"), // DD/MM/YYYY
+    dob: dob.toLocaleDateString("en-GB"),
   };
 }
