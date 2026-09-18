@@ -15,7 +15,7 @@
 
 <br/>
 
-[🚀 Live Demo](#) &nbsp;&nbsp;·&nbsp;&nbsp; [📸 Screenshots](#-screenshots) &nbsp;&nbsp;·&nbsp;&nbsp; [⚙️ Setup](#%EF%B8%8F-installation--setup) &nbsp;&nbsp;·&nbsp;&nbsp; [📐 How It Works](#-how-it-works)
+[🚀 Live Demo](https://parental-legacy-life-factors-calcul-five.vercel.app/) &nbsp;&nbsp;·&nbsp;&nbsp; [📸 Screenshots](#-screenshots) &nbsp;&nbsp;·&nbsp;&nbsp; [⚙️ Setup](#%EF%B8%8F-installation--setup) &nbsp;&nbsp;·&nbsp;&nbsp; [📐 How It Works](#-how-it-works)
 
 </div>
 
@@ -240,7 +240,7 @@ For **DOB: 15/03/1990** (Day = **15**, Odd → **Mother Dominant**):
 ## 📬 Submission
 
 - **GitHub Repository:** https://github.com/moresandip/Parental-Legacy-Life-Factors-Calculator
-- **WhatsApp:** 8454815742
+- **Live Demo:** https://parental-legacy-life-factors-calcul-five.vercel.app/
 
 ---
 
