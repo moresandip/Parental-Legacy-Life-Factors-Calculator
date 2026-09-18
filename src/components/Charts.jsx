@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -13,7 +14,7 @@ import {
 } from "recharts";
 import { useApp } from "../context/AppContext";
 
-// Custom Tooltip for bar chart
+// ─── Custom Tooltip — Bar Chart ───────────────────────────────
 function CustomBarTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -30,7 +31,7 @@ function CustomBarTooltip({ active, payload, label }) {
   );
 }
 
-// Custom Tooltip for pie chart
+// ─── Custom Tooltip — Pie Chart ───────────────────────────────
 function CustomPieTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
@@ -47,97 +48,109 @@ function CustomPieTooltip({ active, payload }) {
   );
 }
 
+// ─── Responsive chart height hook ─────────────────────────────
+function useChartHeight() {
+  const [height, setHeight] = useState(260);
+  useEffect(() => {
+    function update() {
+      if (window.innerWidth <= 360) setHeight(180);
+      else if (window.innerWidth <= 480) setHeight(200);
+      else if (window.innerWidth <= 600) setHeight(220);
+      else setHeight(260);
+    }
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return height;
+}
+
+// ─── Main Charts Component ────────────────────────────────────
 export default function Charts({ result }) {
   const { theme } = useApp();
+  const chartHeight = useChartHeight();
   const { factors, motherTotal, fatherTotal } = result;
 
   const MOTHER_COLOR = "#ec4899";
   const FATHER_COLOR = "#3b82f6";
-  const GRID_COLOR = theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-  const TICK_COLOR = theme === "dark" ? "#5a6090" : "#7c7aaa";
+  const GRID_COLOR   = theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const TICK_COLOR   = theme === "dark" ? "#5a6090" : "#7c7aaa";
 
-  // Short labels for bar chart X axis
+  // Shortened labels for X axis
   const barData = factors.map((f) => ({
-    name: f.label.split(" ")[0], // First word as short label
+    name: f.label.split(" ")[0],
     fullName: f.label,
     Mother: f.mother,
     Father: f.father,
   }));
 
-  // Pie chart: totals comparison
+  // Donut pie data
   const pieData = [
     { name: "Mother Total", value: motherTotal, fill: MOTHER_COLOR },
     { name: "Father Total", value: fatherTotal, fill: FATHER_COLOR },
   ];
 
-  // Radial-style pie: per-factor mother vs father
-  const radarData = factors.map((f) => ({
-    name: f.label,
-    Mother: f.mother,
-    Father: f.father,
-    fill: MOTHER_COLOR,
-  }));
-
   return (
     <div className="charts-grid">
-      {/* Grouped Bar Chart */}
+
+      {/* ─── Grouped Bar Chart ─── */}
       <div className="chart-card">
         <div className="section-title" style={{ marginBottom: "16px" }}>
           <div className="icon">📈</div>
-          Factor Comparison (Bar)
+          Factor Comparison
         </div>
 
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <BarChart
             data={barData}
-            margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
-            barGap={4}
-            barCategoryGap="28%"
+            margin={{ top: 8, right: 4, left: -18, bottom: 0 }}
+            barGap={2}
+            barCategoryGap="30%"
           >
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
             <XAxis
               dataKey="name"
-              tick={{ fill: TICK_COLOR, fontSize: 11, fontFamily: "Inter, sans-serif" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
               tick={{ fill: TICK_COLOR, fontSize: 10, fontFamily: "Inter, sans-serif" }}
               axisLine={false}
               tickLine={false}
-              domain={[0, "auto"]}
+              interval={0}
             />
-            <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-            <Bar dataKey="Mother" fill={MOTHER_COLOR} radius={[4, 4, 0, 0]} maxBarSize={24} />
-            <Bar dataKey="Father" fill={FATHER_COLOR} radius={[4, 4, 0, 0]} maxBarSize={24} />
+            <YAxis
+              tick={{ fill: TICK_COLOR, fontSize: 9, fontFamily: "Inter, sans-serif" }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+            <Tooltip
+              content={<CustomBarTooltip />}
+              cursor={{ fill: "rgba(255,255,255,0.03)" }}
+            />
+            <Bar dataKey="Mother" fill={MOTHER_COLOR} radius={[4, 4, 0, 0]} maxBarSize={20} />
+            <Bar dataKey="Father" fill={FATHER_COLOR} radius={[4, 4, 0, 0]} maxBarSize={20} />
           </BarChart>
         </ResponsiveContainer>
 
         <div className="chart-legend">
-          <div className="legend-item">
-            <div className="legend-dot mother" /> Mother
-          </div>
-          <div className="legend-item">
-            <div className="legend-dot father" /> Father
-          </div>
+          <div className="legend-item"><div className="legend-dot mother" /> Mother</div>
+          <div className="legend-item"><div className="legend-dot father" /> Father</div>
         </div>
       </div>
 
-      {/* Pie Chart — Overall Distribution */}
+      {/* ─── Donut Pie Chart ─── */}
       <div className="chart-card">
         <div className="section-title" style={{ marginBottom: "16px" }}>
           <div className="icon">🥧</div>
-          Overall Legacy Distribution
+          Legacy Distribution
         </div>
 
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <PieChart>
             <Pie
               data={pieData}
               cx="50%"
               cy="50%"
-              innerRadius={65}
-              outerRadius={100}
+              innerRadius="40%"
+              outerRadius="62%"
               paddingAngle={4}
               dataKey="value"
               startAngle={90}
@@ -150,18 +163,20 @@ export default function Charts({ result }) {
             </Pie>
             <Tooltip content={<CustomPieTooltip />} />
             <Legend
+              iconType="circle"
+              iconSize={10}
               formatter={(value) => (
-                <span style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{value}</span>
+                <span style={{ color: "var(--text-secondary)", fontSize: "12px" }}>{value}</span>
               )}
             />
           </PieChart>
         </ResponsiveContainer>
 
-        {/* Center text via absolute positioning trick */}
-        <div style={{ textAlign: "center", marginTop: "-16px", fontSize: "12px", color: "var(--text-muted)" }}>
-          Total = 100
+        <div style={{ textAlign: "center", fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+          Grand Total = 100
         </div>
       </div>
+
     </div>
   );
 }
