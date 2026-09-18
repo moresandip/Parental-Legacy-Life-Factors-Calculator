@@ -27,17 +27,20 @@ export default function Results() {
       style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease" }}
     >
       <div className="container">
-        {/* Export bar at top */}
+        {/* Export buttons — excluded from PDF capture */}
         <ExportBar result={result} />
 
-        {/* Parental Legacy banner */}
-        <ParentalLegacy result={result} />
+        {/* ↓ Everything below this div is captured in the PDF ↓ */}
+        <div id="pdf-capture">
+          {/* Parental Legacy banner */}
+          <ParentalLegacy result={result} />
 
-        {/* Factor breakdown table */}
-        <FactorTable result={result} />
+          {/* Factor breakdown table */}
+          <FactorTable result={result} />
 
-        {/* Charts */}
-        <Charts result={result} />
+          {/* Charts */}
+          <Charts result={result} />
+        </div>
       </div>
     </section>
   );
